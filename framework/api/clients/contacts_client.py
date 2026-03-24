@@ -27,3 +27,9 @@ class ContactClient:
         response = requests.get(f"{BASE_URL}{ApiEndpoints.CONTACTS}", headers=headers)
         response.raise_for_status()
         return [ContactResponse(**item) for item in response.json()]
+    
+    def delete_contact(self, token: str, contact_id: str) -> None:
+        headers = {"Authorization": f"Bearer {token}"}
+        requests.delete(f"{BASE_URL}{ApiEndpoints.CONTACTS}/{contact_id}", headers=headers)
+        
+    

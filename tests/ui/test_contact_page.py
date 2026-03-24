@@ -7,6 +7,8 @@ from constants.ui_endpoints import UiEndpoints
 
 @pytest.fixture
 def contact_list(logged_in_page: Page) -> ContactList:
+    logged_in_page.goto(f"{BASE_URL}{UiEndpoints.CONTACT_LIST}")
+    
     return ContactList(logged_in_page)
 
 

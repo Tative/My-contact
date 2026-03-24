@@ -13,5 +13,8 @@ class ContactList:
 
     def add_contact(self) -> None:
         self.add_contact_button.click()
+        
+    def contact_details_navigate(self):
+        self.table.click()
 
     

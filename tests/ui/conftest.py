@@ -33,7 +33,6 @@ def new_user() -> UserLoginResponse: # type: ignore
 @pytest.fixture
 def logged_in_page(page: Page, new_user: UserLoginResponse) -> Page: # type: ignore
     page.context.add_cookies([{"name": "token", "value": new_user.token, "url": BASE_URL}])
-    page.goto(f"{BASE_URL}{UiEndpoints.CONTACT_LIST}")
 
     yield page
 
