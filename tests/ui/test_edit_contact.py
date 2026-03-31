@@ -5,6 +5,7 @@ from playwright.sync_api import Page, expect
 
 from framework.ui.page_objects.contact_details import ContactDetails
 from framework.ui.page_objects.contact_list_page import ContactList
+from framework.ui.page_objects.contact_edit_page import ContactEdit
 from framework.ui.models.contact_models_ui import ContactUI
 from constants.ui_endpoints import UiEndpoints
 from framework.api.clients.contacts_client import Contact, ContactClient
@@ -39,7 +40,8 @@ def api_contact(new_user: UserLoginResponse) -> Generator[ContactResponse, None,
         client.delete_contact(new_user.token, my_contact.id)
     except:
         pass
-    
+
+
 @pytest.fixture
 def user_on_contact_details(logged_in_page: Page, api_contact: ContactResponse) -> ContactDetails:
     logged_in_page.goto(f"{BASE_URL}{UiEndpoints.CONTACT_LIST}")
@@ -47,14 +49,34 @@ def user_on_contact_details(logged_in_page: Page, api_contact: ContactResponse) 
     contact_list.contact_details_navigate()
     return ContactDetails(logged_in_page)
 
-def test_user_can_delete(user_on_contact_details: ContactDetails,new_user: UserLoginResponse) -> None:    
-    user_on_contact_details.delete_contact_accept()
 
-    contact_list_page = ContactList(user_on_contact_details.page)
-    expect(contact_list_page.table).not_to_be_visible()
+def test_user_can_edit_contact(user_on_contact_details: ContactDetails,new_user: UserLoginResponse) -> None:
+    user_on_contact_details.edit_contact()
+    contact_edit_page = ContactEdit(user_on_contact_details.page)
+    updated_contact = ContactUI(
+        first_name="UpdatedName",
+        last_name="UpdatedLastName",
+        birthdate="1990-01-01")
+    
+    contact_edit_page.page.wait_for_load_state("networkidle")
+    contact_edit_page.fill_form(updated_contact)
+    
+    contact_edit_page.submit()
+    expect(contact_edit_page.page).to_have_url(f"{BASE_URL}{UiEndpoints.CONTACT_DETAILS}")
 
     contact_client = ContactClient()
     contacts_from_api = contact_client.get_contact_list(new_user.token)
-    assert len(contacts_from_api) == 0
-       
     
+    assert len(contacts_from_api) == 1, "Контакт не сохранился в БД!"
+    
+    api_data = contacts_from_api[0].model_dump(exclude={'id', 'owner'}) # Выкидываем системные поля API
+    expected_data = VALID_BASELINE_CONTACT.model_copy(update={
+    "first_name": "UpdatedName",
+    "last_name": "UpdatedLastName",
+    "birthdate": "1990-01-01"
+    }).model_dump()
+    assert api_data == expected_data, f"Данные в БД не совпадают! Ожидали {expected_data}, получили {api_data}"
+
+
+
+
