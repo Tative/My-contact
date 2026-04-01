@@ -7,9 +7,10 @@ from framework.ui.page_objects.contact_details import ContactDetails
 from framework.ui.page_objects.contact_list_page import ContactList
 from framework.ui.models.contact_models_ui import ContactUI
 from constants.ui_endpoints import UiEndpoints
-from framework.api.clients.contacts_client import Contact, ContactClient
+from framework.api.clients.contacts_client import Contact
 from framework.api.models.user_model import UserLoginResponse
 from framework.api.models.contact_model import ContactResponse
+from framework.logic.contact_helpers import ContactHelpers
 from framework.config import BASE_URL
 
 
@@ -28,15 +29,15 @@ VALID_BASELINE_CONTACT = ContactUI(
 )
 
 @pytest.fixture
-def api_contact(new_user: UserLoginResponse) -> Generator[ContactResponse, None, None]:
-    client = ContactClient() 
+def api_contact(new_user: UserLoginResponse,
+                contact_helpers: ContactHelpers) -> Generator[ContactResponse, None, None]:
     api_data = Contact(**VALID_BASELINE_CONTACT.model_dump())
-    my_contact = client.create_contact(new_user.token, api_data) 
+    my_contact = contact_helpers.create_new_contact(api_data) 
     
     yield my_contact
     
     try:
-        client.delete_contact(new_user.token, my_contact.id)
+        contact_helpers.delete_contact(my_contact.id)
     except:
         pass
     
@@ -47,14 +48,12 @@ def user_on_contact_details(logged_in_page: Page, api_contact: ContactResponse) 
     contact_list.contact_details_navigate()
     return ContactDetails(logged_in_page)
 
-def test_user_can_delete(user_on_contact_details: ContactDetails,new_user: UserLoginResponse) -> None:    
+def test_user_can_delete(contact_helpers: ContactHelpers, user_on_contact_details: ContactDetails) -> None:    
     user_on_contact_details.delete_contact_accept()
-
     contact_list_page = ContactList(user_on_contact_details.page)
     expect(contact_list_page.table).not_to_be_visible()
-
-    contact_client = ContactClient()
-    contacts_from_api = contact_client.get_contact_list(new_user.token)
+    expect(user_on_contact_details.page).to_have_url(f"{BASE_URL}{UiEndpoints.CONTACT_LIST}")
+    contacts_from_api = contact_helpers.get_contact_list()
     assert len(contacts_from_api) == 0
        
-    
+

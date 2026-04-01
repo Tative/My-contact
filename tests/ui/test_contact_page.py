@@ -3,6 +3,7 @@ from playwright.sync_api import Page, expect
 from framework.ui.page_objects.contact_list_page import ContactList
 from framework.config import BASE_URL
 from constants.ui_endpoints import UiEndpoints
+from framework.logic.contact_helpers import ContactHelpers
 
 
 @pytest.fixture

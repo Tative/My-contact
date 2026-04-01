@@ -8,10 +8,10 @@ from framework.ui.page_objects.contact_list_page import ContactList
 from framework.ui.page_objects.contact_edit_page import ContactEdit
 from framework.ui.models.contact_models_ui import ContactUI
 from constants.ui_endpoints import UiEndpoints
-from framework.api.clients.contacts_client import Contact, ContactClient
-from framework.api.models.user_model import UserLoginResponse
+from framework.api.clients.contacts_client import Contact
 from framework.api.models.contact_model import ContactResponse
 from framework.config import BASE_URL
+from framework.logic.contact_helpers import ContactHelpers
 
 
 VALID_BASELINE_CONTACT = ContactUI(
@@ -29,15 +29,14 @@ VALID_BASELINE_CONTACT = ContactUI(
 )
 
 @pytest.fixture
-def api_contact(new_user: UserLoginResponse) -> Generator[ContactResponse, None, None]:
-    client = ContactClient() 
+def api_contact(contact_helpers: ContactHelpers) -> Generator[ContactResponse, None, None]:
     api_data = Contact(**VALID_BASELINE_CONTACT.model_dump())
-    my_contact = client.create_contact(new_user.token, api_data) 
+    my_contact = contact_helpers.create_new_contact(api_data) 
     
     yield my_contact
     
     try:
-        client.delete_contact(new_user.token, my_contact.id)
+        contact_helpers.delete_contact(my_contact.id)
     except:
         pass
 
@@ -50,7 +49,7 @@ def user_on_contact_details(logged_in_page: Page, api_contact: ContactResponse) 
     return ContactDetails(logged_in_page)
 
 
-def test_user_can_edit_contact(user_on_contact_details: ContactDetails,new_user: UserLoginResponse) -> None:
+def test_user_can_edit_contact(contact_helpers: ContactHelpers, user_on_contact_details: ContactDetails) -> None:
     user_on_contact_details.edit_contact()
     contact_edit_page = ContactEdit(user_on_contact_details.page)
     updated_contact = ContactUI(
@@ -64,12 +63,11 @@ def test_user_can_edit_contact(user_on_contact_details: ContactDetails,new_user:
     contact_edit_page.submit()
     expect(contact_edit_page.page).to_have_url(f"{BASE_URL}{UiEndpoints.CONTACT_DETAILS}")
 
-    contact_client = ContactClient()
-    contacts_from_api = contact_client.get_contact_list(new_user.token)
+    contacts_from_api = contact_helpers.get_contact_list()
     
     assert len(contacts_from_api) == 1, "Контакт не сохранился в БД!"
     
-    api_data = contacts_from_api[0].model_dump(exclude={'id', 'owner'}) # Выкидываем системные поля API
+    api_data = contacts_from_api[0].model_dump(exclude={'id', 'owner'})
     expected_data = VALID_BASELINE_CONTACT.model_copy(update={
     "first_name": "UpdatedName",
     "last_name": "UpdatedLastName",
